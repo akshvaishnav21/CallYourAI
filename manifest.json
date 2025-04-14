@@ -13,6 +13,9 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "omnibox": {
+    "keyword": "@"
+  },
   "icons": {
     "16": "icons/icon16.svg",
     "48": "icons/icon48.svg",

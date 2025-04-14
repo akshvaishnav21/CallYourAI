@@ -5,66 +5,48 @@ const AI_SERVICES = {
     url: 'https://chat.openai.com/',
     directUrl: 'https://chat.openai.com/chat?q=%s', // URL with query parameter support
     queryParam: 'q', // Parameter name for query
-    selector: 'textarea[data-id="root"]', // Primary selector for main input field
-    alternativeSelectors: [
-      'textarea[placeholder="Message ChatGPT…"]', 
-      'textarea.w-full'
-    ]
+    description: 'Ask ChatGPT',
+    icon: '🤖' // Icon to display in the omnibox
   },
   'gemini': {
     name: 'Google Gemini',
     url: 'https://gemini.google.com/',
     directUrl: 'https://gemini.google.com/?text=%s', // URL with query parameter
     queryParam: 'text',
-    selector: 'input[aria-label="Ask Gemini"]', // Selector for the input field
-    alternativeSelectors: [
-      'textarea[placeholder="Ask me anything..."]',
-      'textarea.message-input'
-    ]
+    description: 'Ask Gemini',
+    icon: '🔮' // Icon to display in the omnibox
   },
   'bard': {
     name: 'Google Gemini', // Bard is now Gemini
     url: 'https://gemini.google.com/',
     directUrl: 'https://gemini.google.com/?text=%s',
     queryParam: 'text',
-    selector: 'input[aria-label="Ask Gemini"]',
-    alternativeSelectors: [
-      'textarea[placeholder="Ask me anything..."]',
-      'textarea.message-input'
-    ]
+    description: 'Ask Gemini (formerly Bard)',
+    icon: '🔮' // Icon to display in the omnibox
   },
   'bingchat': {
     name: 'Bing Chat',
     url: 'https://www.bing.com/chat',
     directUrl: 'https://www.bing.com/chat?q=%s',
     queryParam: 'q',
-    selector: 'textarea#searchbox',
-    alternativeSelectors: [
-      'cib-serp-main textarea',
-      'textarea[placeholder="Ask me anything..."]'
-    ]
+    description: 'Ask Bing Chat',
+    icon: '🔍' // Icon to display in the omnibox
   },
   'claude': {
     name: 'Claude',
     url: 'https://claude.ai/',
     directUrl: 'https://claude.ai/new?q=%s', // Direct URL with query parameter
     queryParam: 'q',
-    selector: 'div[contenteditable="true"]',
-    alternativeSelectors: [
-      '.text-input__content-editor',
-      'div[role="textbox"]'
-    ]
+    description: 'Ask Claude',
+    icon: '🧠' // Icon to display in the omnibox
   },
   'perplexity': {
     name: 'Perplexity AI',
     url: 'https://www.perplexity.ai/',
     directUrl: 'https://www.perplexity.ai/search?q=%s', // Direct URL with query parameter
     queryParam: 'q',
-    selector: 'textarea.ProseMirror',
-    alternativeSelectors: [
-      'div.ProseMirror[contenteditable="true"]',
-      'textarea[placeholder="Ask anything..."]'
-    ]
+    description: 'Search with Perplexity AI',
+    icon: '🔎' // Icon to display in the omnibox
   }
 };
 
@@ -217,9 +199,57 @@ function handleAIQuery(input) {
   });
 }
 
-// Add listener for messages from content scripts
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'queryPasted') {
-    console.log('Query pasted successfully');
+// Initialize the omnibox suggestion feature
+chrome.omnibox = chrome.omnibox || {};
+chrome.omnibox.onInputChanged = chrome.omnibox.onInputChanged || { addListener: () => {} };
+chrome.omnibox.onInputEntered = chrome.omnibox.onInputEntered || { addListener: () => {} };
+chrome.omnibox.setDefaultSuggestion = chrome.omnibox.setDefaultSuggestion || function() {};
+
+// Set default suggestion text that appears when user types "@" in the address bar
+chrome.omnibox.setDefaultSuggestion({
+  description: 'Type an AI service name: @chatgpt, @gemini, @claude, @perplexity, @bingchat'
+});
+
+// This event is fired each time the user updates the text in the omnibox
+chrome.omnibox.onInputChanged.addListener((text, suggest) => {
+  // Extract the service name if possible (without the query part)
+  const serviceMatch = text.match(/^([a-zA-Z]+)(?:\s+(.*))?$/);
+  
+  if (serviceMatch) {
+    const serviceName = serviceMatch[1].toLowerCase();
+    const serviceObj = AI_SERVICES[serviceName];
+    
+    if (serviceObj) {
+      // If it's a valid service, suggest it with customized description
+      const suggestions = [{
+        content: text,
+        description: `${serviceObj.icon} <match>${serviceName}</match>: ${serviceObj.description} ${serviceMatch[2] ? `"${serviceMatch[2]}"` : ''}`
+      }];
+      
+      // Also provide suggestions for other services
+      const otherSuggestions = Object.entries(AI_SERVICES)
+        .filter(([key]) => key !== serviceName)
+        .map(([key, service]) => ({
+          content: `${key}${serviceMatch[2] ? ' ' + serviceMatch[2] : ''}`,
+          description: `${service.icon} <match>${key}</match>: ${service.description} ${serviceMatch[2] ? `"${serviceMatch[2]}"` : ''}`
+        }));
+      
+      suggest([...suggestions, ...otherSuggestions.slice(0, 4)]); // Show up to 5 suggestions (the matched one + 4 others)
+    } else {
+      // Show suggestions for all services
+      const allSuggestions = Object.entries(AI_SERVICES).map(([key, service]) => ({
+        content: `${key}${serviceMatch[2] ? ' ' + serviceMatch[2] : ''}`,
+        description: `${service.icon} <match>${key}</match>: ${service.description} ${serviceMatch[2] ? `"${serviceMatch[2]}"` : ''}`
+      }));
+      
+      suggest(allSuggestions.slice(0, 5)); // Show up to 5 suggestions
+    }
   }
+});
+
+// This event is fired when the user accepts a suggestion from the omnibox
+chrome.omnibox.onInputEntered.addListener((text) => {
+  // Process the entered text as an AI query
+  const queryText = '@' + text; // Add the @ prefix back
+  handleAIQuery(queryText);
 });
