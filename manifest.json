@@ -2,16 +2,16 @@
   "manifest_version": 3,
   "name": "AI Portal",
   "version": "1.0",
-  "description": "Access AI services directly from the Chrome omnibox",
+  "description": "Access AI services directly from the Chrome address bar",
   "background": {
     "service_worker": "background.js"
   },
-  "omnibox": {
-    "keyword": "ai"
-  },
   "permissions": [
     "tabs",
-    "clipboardWrite"
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "<all_urls>"
   ],
   "content_scripts": [
     {
@@ -22,7 +22,8 @@
         "https://claude.ai/*",
         "https://www.perplexity.ai/*"
       ],
-      "js": ["content-scripts/paste-query.js"]
+      "js": ["content-scripts/paste-query.js"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {

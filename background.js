@@ -4,73 +4,137 @@ const AI_SERVICES = {
     name: 'ChatGPT',
     url: 'https://chat.openai.com/',
     queryParam: null, // ChatGPT does not support direct query parameters
-    selector: 'textarea[data-id="root"]', // The input field selector
-    needsClipboard: true
+    selector: 'textarea[data-id="root"]', // Primary selector for main input field
+    alternativeSelectors: [
+      'textarea[placeholder="Message ChatGPT…"]', 
+      'textarea.w-full'
+    ]
   },
   'gemini': {
     name: 'Google Gemini',
     url: 'https://gemini.google.com/',
     queryParam: null, // Gemini doesn't support direct query parameters
     selector: 'input[aria-label="Ask Gemini"]', // Selector for the input field
-    needsClipboard: true
+    alternativeSelectors: [
+      'textarea[placeholder="Ask me anything..."]',
+      'textarea.message-input'
+    ]
   },
   'bard': {
     name: 'Google Gemini', // Bard is now Gemini
     url: 'https://gemini.google.com/',
     queryParam: null,
     selector: 'input[aria-label="Ask Gemini"]',
-    needsClipboard: true
+    alternativeSelectors: [
+      'textarea[placeholder="Ask me anything..."]',
+      'textarea.message-input'
+    ]
   },
   'bingchat': {
     name: 'Bing Chat',
     url: 'https://www.bing.com/chat',
     queryParam: null, // Bing Chat doesn't support direct query parameters
     selector: 'textarea#searchbox',
-    needsClipboard: true
+    alternativeSelectors: [
+      'cib-serp-main textarea',
+      'textarea[placeholder="Ask me anything..."]'
+    ]
   },
   'claude': {
     name: 'Claude',
     url: 'https://claude.ai/',
     queryParam: null, // Claude doesn't support direct query parameters
     selector: 'div[contenteditable="true"]',
-    needsClipboard: true
+    alternativeSelectors: [
+      '.text-input__content-editor',
+      'div[role="textbox"]'
+    ]
   },
   'perplexity': {
     name: 'Perplexity AI',
     url: 'https://www.perplexity.ai/',
     queryParam: 'q', // Perplexity supports direct query via URL
     selector: 'textarea.ProseMirror',
-    needsClipboard: true
+    alternativeSelectors: [
+      'div.ProseMirror[contenteditable="true"]',
+      'textarea[placeholder="Ask anything..."]'
+    ]
   }
 };
 
-// Initialize the omnibox suggestion
-chrome.omnibox.onInputStarted.addListener(() => {
-  chrome.omnibox.setDefaultSuggestion({
-    description: 'Type @service followed by your query (e.g., @chatgpt What is machine learning?)'
-  });
-});
+// Listen for omnibox (address bar) input
+chrome.webNavigation = chrome.webNavigation || {};
+chrome.webNavigation.onBeforeNavigate = chrome.webNavigation.onBeforeNavigate || { addListener: () => {} };
 
-// When the user types in the omnibox
-chrome.omnibox.onInputChanged.addListener((text, suggest) => {
-  const suggestions = [];
-  
-  // If the input starts with @ but doesn't match a known service yet
-  if (text.startsWith('@') && !extractServiceFromInput(text)) {
-    // Generate suggestions for available services
-    for (const [key, service] of Object.entries(AI_SERVICES)) {
-      suggestions.push({
-        content: `@${key} `,
-        description: `Use ${service.name}: <match>@${key}</match> [your query]`
-      });
+// Add listener for the webNavigation events to intercept address bar navigation
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+  // Only process main frame navigations (the main webpage, not iframes or other embedded content)
+  if (details.frameId === 0) {
+    try {
+      const url = new URL(details.url);
+      
+      // Check if this is a direct navigation to an @ command
+      if (url.pathname === '/@' || url.pathname.startsWith('/@')) {
+        // Extract the query - remove the leading /@ 
+        const query = url.pathname.substring(2);
+        if (query) {
+          // Cancel this navigation by redirecting to about:blank
+          chrome.tabs.update(details.tabId, { url: 'about:blank' });
+          
+          // Process the AI query
+          handleAIQuery('@' + query);
+          return;
+        }
+      }
+      
+      // Check for search engine queries containing @ commands
+      if (url.hostname.includes('google.com') || 
+          url.hostname.includes('bing.com') || 
+          url.hostname.includes('yahoo.com') || 
+          url.hostname.includes('duckduckgo.com')) {
+        
+        // Get search query from common search engines
+        const searchParams = url.searchParams;
+        const searchKeys = ['q', 'query', 'p', 'text'];
+        
+        for (const key of searchKeys) {
+          if (searchParams.has(key)) {
+            const query = searchParams.get(key);
+            if (query && query.startsWith('@')) {
+              // Cancel the search and handle our command
+              chrome.tabs.update(details.tabId, { url: 'about:blank' });
+              handleAIQuery(query);
+              return;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error processing navigation:', e);
     }
-    suggest(suggestions);
   }
 });
 
-// When the user selects something from the omnibox
-chrome.omnibox.onInputEntered.addListener((text) => {
-  handleAIQuery(text);
+// Direct address bar handler
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Only process if the URL is changing and it's not empty
+  if (changeInfo.url) {
+    try {
+      const url = new URL(changeInfo.url);
+      
+      // Handle direct @ commands in address bar
+      if (url.href.startsWith('http://@') || url.href.startsWith('https://@')) {
+        // This is likely someone typing @something directly in the address bar
+        const query = changeInfo.url.split('://')[1]; // Get everything after the protocol
+        if (query.startsWith('@')) {
+          chrome.tabs.update(tabId, { url: 'about:blank' });
+          handleAIQuery(query);
+        }
+      }
+    } catch (e) {
+      console.error('Error in address bar handler:', e);
+    }
+  }
 });
 
 /**
@@ -101,14 +165,13 @@ function extractServiceFromInput(input) {
 
 /**
  * Main handler for processing AI queries
- * @param {string} input - User input from omnibox
+ * @param {string} input - User input from address bar
  */
 function handleAIQuery(input) {
   const extractedData = extractServiceFromInput(input);
   
   if (!extractedData) {
-    // If the input doesn't match our pattern, just search for it using the default search engine
-    chrome.tabs.create({ url: `https://www.google.com/search?q=${encodeURIComponent(input)}` });
+    // If it doesn't match our pattern, let the navigation continue
     return;
   }
   
@@ -130,29 +193,33 @@ function handleAIQuery(input) {
       // Reuse the existing tab
       chrome.tabs.update(existingTab.id, { active: true });
       
-      // If clipboard is needed to paste the query (most AI services need this)
-      if (service.needsClipboard) {
-        // Write the query to clipboard
-        navigator.clipboard.writeText(query).then(() => {
-          // Execute content script to assist with pasting
-          chrome.tabs.sendMessage(existingTab.id, { 
-            action: 'pasteQuery', 
-            query: query,
-            selector: service.selector
-          });
-        });
-      }
+      // Execute content script to paste the query
+      chrome.tabs.sendMessage(existingTab.id, { 
+        action: 'pasteQuery', 
+        query: query,
+        selector: service.selector,
+        alternativeSelectors: service.alternativeSelectors
+      });
     } else {
-      // Create a new tab
-      chrome.tabs.create({ url: url }, (tab) => {
-        // If the service needs clipboard support to paste the query
-        if (service.needsClipboard) {
-          // Write the query to clipboard
-          navigator.clipboard.writeText(query);
-          
-          // We'll need to wait for the page to load before we can inject our content script
-          // The content script will handle pasting the query into the input field
-        }
+      // Create a new tab with our service URL
+      chrome.tabs.create({ url: url }, (newTab) => {
+        // Wait for the tab to finish loading, then send the message
+        chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+          if (tabId === newTab.id && info.status === 'complete') {
+            // Remove the listener to avoid memory leaks
+            chrome.tabs.onUpdated.removeListener(listener);
+            
+            // Send the message with a slight delay to ensure content script is ready
+            setTimeout(() => {
+              chrome.tabs.sendMessage(newTab.id, {
+                action: 'pasteQuery',
+                query: query,
+                selector: service.selector,
+                alternativeSelectors: service.alternativeSelectors
+              });
+            }, 1000);
+          }
+        });
       });
     }
   });
