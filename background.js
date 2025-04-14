@@ -3,7 +3,8 @@ const AI_SERVICES = {
   'chatgpt': {
     name: 'ChatGPT',
     url: 'https://chat.openai.com/',
-    queryParam: null, // ChatGPT does not support direct query parameters
+    directUrl: 'https://chat.openai.com/chat?q=%s', // URL with query parameter support
+    queryParam: 'q', // Parameter name for query
     selector: 'textarea[data-id="root"]', // Primary selector for main input field
     alternativeSelectors: [
       'textarea[placeholder="Message ChatGPT…"]', 
@@ -13,7 +14,8 @@ const AI_SERVICES = {
   'gemini': {
     name: 'Google Gemini',
     url: 'https://gemini.google.com/',
-    queryParam: null, // Gemini doesn't support direct query parameters
+    directUrl: 'https://gemini.google.com/?text=%s', // URL with query parameter
+    queryParam: 'text',
     selector: 'input[aria-label="Ask Gemini"]', // Selector for the input field
     alternativeSelectors: [
       'textarea[placeholder="Ask me anything..."]',
@@ -23,7 +25,8 @@ const AI_SERVICES = {
   'bard': {
     name: 'Google Gemini', // Bard is now Gemini
     url: 'https://gemini.google.com/',
-    queryParam: null,
+    directUrl: 'https://gemini.google.com/?text=%s',
+    queryParam: 'text',
     selector: 'input[aria-label="Ask Gemini"]',
     alternativeSelectors: [
       'textarea[placeholder="Ask me anything..."]',
@@ -33,7 +36,8 @@ const AI_SERVICES = {
   'bingchat': {
     name: 'Bing Chat',
     url: 'https://www.bing.com/chat',
-    queryParam: null, // Bing Chat doesn't support direct query parameters
+    directUrl: 'https://www.bing.com/chat?q=%s',
+    queryParam: 'q',
     selector: 'textarea#searchbox',
     alternativeSelectors: [
       'cib-serp-main textarea',
@@ -43,7 +47,8 @@ const AI_SERVICES = {
   'claude': {
     name: 'Claude',
     url: 'https://claude.ai/',
-    queryParam: null, // Claude doesn't support direct query parameters
+    directUrl: 'https://claude.ai/new?q=%s', // Direct URL with query parameter
+    queryParam: 'q',
     selector: 'div[contenteditable="true"]',
     alternativeSelectors: [
       '.text-input__content-editor',
@@ -53,7 +58,8 @@ const AI_SERVICES = {
   'perplexity': {
     name: 'Perplexity AI',
     url: 'https://www.perplexity.ai/',
-    queryParam: 'q', // Perplexity supports direct query via URL
+    directUrl: 'https://www.perplexity.ai/search?q=%s', // Direct URL with query parameter
+    queryParam: 'q',
     selector: 'textarea.ProseMirror',
     alternativeSelectors: [
       'div.ProseMirror[contenteditable="true"]',
@@ -177,50 +183,36 @@ function handleAIQuery(input) {
   
   const { service, serviceKey, query } = extractedData;
   
-  // Construct the URL based on whether the service supports query parameters
-  let url = service.url;
-  if (service.queryParam) {
-    // If the service accepts query parameters, add it to the URL
-    const separator = url.includes('?') ? '&' : '?';
-    url = `${url}${separator}${service.queryParam}=${encodeURIComponent(query)}`;
+  // Use direct URL with query parameter if available
+  let url;
+  if (service.directUrl) {
+    // Replace %s placeholder with encoded query
+    url = service.directUrl.replace('%s', encodeURIComponent(query));
+  } else {
+    // Fall back to constructing URL with query parameters
+    url = service.url;
+    if (service.queryParam) {
+      // If the service accepts query parameters, add it to the URL
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}${service.queryParam}=${encodeURIComponent(query)}`;
+    }
   }
+  
+  console.log('Opening URL:', url);
   
   // Check if there's already a tab open with this service
   chrome.tabs.query({}, (tabs) => {
     const existingTab = tabs.find(tab => tab.url && tab.url.startsWith(service.url));
     
     if (existingTab) {
-      // Reuse the existing tab
-      chrome.tabs.update(existingTab.id, { active: true });
-      
-      // Execute content script to paste the query
-      chrome.tabs.sendMessage(existingTab.id, { 
-        action: 'pasteQuery', 
-        query: query,
-        selector: service.selector,
-        alternativeSelectors: service.alternativeSelectors
+      // Reuse the existing tab with the new URL
+      chrome.tabs.update(existingTab.id, { 
+        active: true,
+        url: url
       });
     } else {
       // Create a new tab with our service URL
-      chrome.tabs.create({ url: url }, (newTab) => {
-        // Wait for the tab to finish loading, then send the message
-        chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-          if (tabId === newTab.id && info.status === 'complete') {
-            // Remove the listener to avoid memory leaks
-            chrome.tabs.onUpdated.removeListener(listener);
-            
-            // Send the message with a slight delay to ensure content script is ready
-            setTimeout(() => {
-              chrome.tabs.sendMessage(newTab.id, {
-                action: 'pasteQuery',
-                query: query,
-                selector: service.selector,
-                alternativeSelectors: service.alternativeSelectors
-              });
-            }, 1000);
-          }
-        });
-      });
+      chrome.tabs.create({ url: url });
     }
   });
 }
