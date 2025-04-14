@@ -3,7 +3,7 @@ const AI_SERVICES = {
   'chatgpt': {
     name: 'ChatGPT',
     url: 'https://chat.openai.com/',
-    directUrl: 'https://chat.openai.com/chat?q=%s', // URL with query parameter support
+    directUrl: 'https://chatgpt.com/?q=%s', // Updated URL with query parameter support
     queryParam: 'q', // Parameter name for query
     description: 'Ask ChatGPT',
     icon: '🤖' // Icon to display in the omnibox
@@ -24,12 +24,12 @@ const AI_SERVICES = {
     description: 'Ask Gemini (formerly Bard)',
     icon: '🔮' // Icon to display in the omnibox
   },
-  'bingchat': {
-    name: 'Bing Chat',
-    url: 'https://www.bing.com/chat',
-    directUrl: 'https://www.bing.com/chat?q=%s',
+  'copilot': {
+    name: 'Microsoft Copilot',
+    url: 'https://copilot.microsoft.com/',
+    directUrl: 'https://copilot.microsoft.com/?q=%s',
     queryParam: 'q',
-    description: 'Ask Bing Chat',
+    description: 'Ask Microsoft Copilot',
     icon: '🔍' // Icon to display in the omnibox
   },
   'claude': {
@@ -207,7 +207,7 @@ chrome.omnibox.setDefaultSuggestion = chrome.omnibox.setDefaultSuggestion || fun
 
 // Set default suggestion text that appears when user types "@" in the address bar
 chrome.omnibox.setDefaultSuggestion({
-  description: 'Type an AI service name: @chatgpt, @gemini, @claude, @perplexity, @bingchat'
+  description: 'Type an AI service name: @chatgpt, @gemini, @claude, @perplexity, @copilot'
 });
 
 // This event is fired each time the user updates the text in the omnibox
