@@ -8,7 +8,8 @@
   },
   "permissions": [
     "tabs",
-    "webNavigation"
+    "webNavigation",
+    "storage"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -17,8 +18,20 @@
     "keyword": "@"
   },
   "icons": {
-    "16": "icons/icon16.svg",
-    "48": "icons/icon48.svg",
-    "128": "icons/icon128.svg"
+    "16": "icons/store/icon16.png",
+    "48": "icons/store/icon48.png",
+    "128": "icons/store/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/store/icon16.png",
+      "48": "icons/store/icon48.png",
+      "128": "icons/store/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   }
 }

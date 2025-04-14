@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Call Your AI</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      width: 350px;
+      padding: 16px;
+      margin: 0;
+      color: #333;
+    }
+    
+    h1 {
+      color: #3B82F6;
+      font-size: 18px;
+      margin-top: 0;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+    }
+    
+    h1 img {
+      width: 24px;
+      height: 24px;
+      margin-right: 8px;
+    }
+    
+    .input-group {
+      margin-bottom: 16px;
+    }
+    
+    .input-wrapper {
+      display: flex;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      outline: none;
+      font-size: 14px;
+    }
+    
+    button {
+      background-color: #3B82F6;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    button:hover {
+      background-color: #2563EB;
+    }
+    
+    .services {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    
+    .service {
+      padding: 10px;
+      background-color: #f1f5f9;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+    }
+    
+    .service:hover {
+      background-color: #e2e8f0;
+    }
+    
+    .service .emoji {
+      margin-right: 8px;
+      font-size: 18px;
+    }
+    
+    .results {
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 16px;
+      max-height: 300px;
+      overflow-y: auto;
+      display: none;
+    }
+    
+    .results.loading {
+      opacity: 0.7;
+    }
+    
+    .results h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 16px;
+      color: #3B82F6;
+    }
+    
+    .error {
+      color: #E02424;
+      background-color: #FDE8E8;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    
+    .citations {
+      font-size: 12px;
+      margin-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 10px;
+    }
+    
+    .citations a {
+      color: #3B82F6;
+      display: block;
+      margin-bottom: 5px;
+      text-decoration: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .citations a:hover {
+      text-decoration: underline;
+    }
+    
+    footer {
+      font-size: 12px;
+      color: #666;
+      margin-top: 16px;
+      text-align: center;
+    }
+    
+    .options-link {
+      color: #3B82F6;
+      text-decoration: none;
+    }
+    
+    .options-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1><img src="icons/png/icon16.png" alt="Call Your AI logo">Call Your AI</h1>
+  
+  <div class="input-group">
+    <div class="input-wrapper">
+      <input type="text" id="query" placeholder="Ask any AI...">
+      <button id="submitQuery">Ask</button>
+    </div>
+  </div>
+  
+  <div class="services">
+    <div class="service" data-service="chatgpt">
+      <span class="emoji">🤖</span> ChatGPT
+    </div>
+    <div class="service" data-service="claude">
+      <span class="emoji">🧠</span> Claude
+    </div>
+    <div class="service" data-service="gemini">
+      <span class="emoji">🔮</span> Gemini
+    </div>
+    <div class="service" data-service="perplexity">
+      <span class="emoji">🔎</span> Perplexity
+    </div>
+  </div>
+  
+  <div class="tip">
+    Tip: Type <strong>@servicename</strong> directly in the Chrome address bar!
+  </div>
+  
+  <div id="results" class="results">
+    <h3>Results from <span id="serviceName"></span></h3>
+    <div id="resultContent"></div>
+    <div id="citations" class="citations"></div>
+  </div>
+  
+  <footer>
+    <a href="#" id="optionsLink" class="options-link">Extension Options</a>
+  </footer>
+  
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
