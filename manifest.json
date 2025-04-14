@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "AI Portal",
+  "version": "1.0",
+  "description": "Access AI services directly from the Chrome omnibox",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "omnibox": {
+    "keyword": "ai"
+  },
+  "permissions": [
+    "tabs",
+    "clipboardWrite"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*",
+        "https://www.bing.com/chat*",
+        "https://claude.ai/*",
+        "https://www.perplexity.ai/*"
+      ],
+      "js": ["content-scripts/paste-query.js"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/icon128.svg"
+  }
+}
