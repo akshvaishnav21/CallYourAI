@@ -1,4 +1,4 @@
-import { queryPerplexityAPI } from './perplexity.js';
+// No perplexity API integration
 
 // AI services configuration (should match the ones in background.js)
 const AI_SERVICES = {
@@ -40,8 +40,7 @@ const AI_SERVICES = {
     directUrl: 'https://www.perplexity.ai/search?q=%s',
     queryParam: 'q',
     description: 'Search with Perplexity AI',
-    icon: '🔎',
-    hasAPI: true
+    icon: '🔎'
   }
 };
 
@@ -55,7 +54,7 @@ const resultsDiv = document.getElementById('results');
 const serviceNameSpan = document.getElementById('serviceName');
 const resultContentDiv = document.getElementById('resultContent');
 const citationsDiv = document.getElementById('citations');
-const optionsLink = document.getElementById('optionsLink');
+// No options page
 
 // Initialize popup
 document.addEventListener('DOMContentLoaded', () => {
@@ -86,11 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   
-  // Options link
-  optionsLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    chrome.runtime.openOptionsPage();
-  });
+  // No options page functionality
   
   // Focus the input field
   queryInput.focus();
@@ -106,13 +101,8 @@ function handleSubmit() {
   
   const service = AI_SERVICES[currentService];
   
-  // For Perplexity, if we have API support, use it
-  if (service.hasAPI && currentService === 'perplexity') {
-    checkApiKeyAndQuery(query);
-  } else {
-    // For other services, or when API isn't available, open webpage
-    openServicePage(query);
-  }
+  // Always open the service webpage
+  openServicePage(query);
 }
 
 // Check for API key for Perplexity
