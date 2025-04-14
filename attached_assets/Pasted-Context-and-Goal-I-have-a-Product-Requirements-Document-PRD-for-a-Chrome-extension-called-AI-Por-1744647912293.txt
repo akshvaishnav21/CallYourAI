@@ -1,0 +1,66 @@
+Context and Goal:
+I have a Product Requirements Document (PRD) for a Chrome extension called “AI Portal.” The extension should allow users to type custom keywords in the Chrome omnibox (e.g., @chatgpt, @bard, @bingchat, @claude, @perplexity) followed by a query. When the user presses Enter, the extension should open the corresponding AI website and attempt to populate or otherwise handle that query. Below are the key requirements:
+
+Omnibox Integration
+
+Use the Chrome chrome.omnibox API to capture user input.
+
+Parse the user’s input to identify which AI service is requested and what the query is.
+
+Multiple AI Services
+
+Initially support ChatGPT, Google Bard, Bing Chat, Claude, and Perplexity.
+
+Each service has a keyword trigger (e.g., @chatgpt, @bard, @bingchat, @claude, @perplexity).
+
+The extension should open each service’s site in a new tab (or reuse an existing one) and, where possible, pre-populate the query.
+
+Query Handling
+
+If a service supports URL parameters for queries, build and open the URL accordingly.
+
+If direct injection is restricted, open the page and optionally copy the query to the clipboard, prompting the user to paste.
+
+Customization (optional for the first release)
+
+Allow the user to change or add new keyword triggers.
+
+Let them enable or disable certain AI services.
+
+Minimal Permissions
+
+Primarily “tabs” or “activeTab” permission.
+
+“clipboardWrite” might be required if direct text injection is blocked.
+
+Code Structure
+
+A manifest.json (Manifest V3) declaring omnibox usage, permissions, and background service worker.
+
+A background script to handle omnibox events, parse inputs, and open tabs accordingly.
+
+(Optional) A content script if you attempt text injection directly; otherwise, copying/pasting can be the fallback.
+
+Deliverables
+
+A working Chrome extension folder containing all the necessary files (manifest.json, background scripts, etc.).
+
+Demonstrate how the code listens for omnibox input, detects the desired AI service, and opens the site with the user’s query.
+
+Provide code comments explaining how to add or adjust services and keywords.
+
+Please produce:
+
+A complete minimal implementation of this Chrome extension in a runnable format.
+
+Include the manifest.json and all relevant JS files.
+
+Show how omnibox input is handled (which service is chosen, how the query is extracted).
+
+Comment your code where logical to illustrate extension flow and how to customize it later.
+
+Instructions:
+
+Read the above requirements thoroughly.
+
+Generate all necessary files (manifest, background/service worker, etc.) for a functioning Chrome extension meeting the listed requirements.
