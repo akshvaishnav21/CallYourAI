@@ -1,10 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
   <defs>
     <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366F1" />
-      <stop offset="100%" stop-color="#8B5CF6" />
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#A855F7" />
     </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity="0.2" />
+    </filter>
   </defs>
-  <rect width="48" height="48" rx="9" fill="url(#gradient)" />
-  <path d="M24 9C15.72 9 9 15.72 9 24C9 32.28 15.72 39 24 39C32.28 39 39 32.28 39 24C39 15.72 32.28 9 24 9ZM15 24C15 19.02 19.02 15 24 15V33C19.02 33 15 28.98 15 24Z" fill="white" />
+  <!-- Background circle with gradient -->
+  <circle cx="24" cy="24" r="22" fill="url(#gradient)" filter="url(#shadow)" />
+  
+  <!-- Speech bubble -->
+  <path d="M35 20.5C35 16.5 30.5 13.5 25 13.5C19.5 13.5 15 16.5 15 20.5C15 23 17 25 19.5 26.5C19 28 18 29 17 30C20 30 22.3 28.5 23.7 26.5C24.1 26.5 24.6 26.6 25 26.6C30.5 26.6 35 24 35 20.5Z" fill="white" />
+  
+  <!-- @ Symbol -->
+  <text x="25" y="23" text-anchor="middle" font-size="11" font-weight="bold" fill="#3B82F6" font-family="Arial, sans-serif">@</text>
+  
+  <!-- Circular connectors -->
+  <circle cx="14" cy="32" r="3" fill="white" />
+  <circle cx="24" cy="35" r="3" fill="white" />
+  <circle cx="34" cy="32" r="3" fill="white" />
+  
+  <!-- Connection lines -->
+  <path d="M17 31L23 33.5M25 33.5L31 31" stroke="white" stroke-width="1.5" stroke-linecap="round" />
 </svg>

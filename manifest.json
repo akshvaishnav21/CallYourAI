@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "AI Portal",
+  "name": "Call Your AI",
   "version": "1.0",
   "description": "Access AI services directly from the Chrome address bar",
   "background": {
