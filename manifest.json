@@ -12,7 +12,12 @@
     "storage"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://gemini.google.com/*",
+    "https://copilot.microsoft.com/*",
+    "https://claude.ai/*",
+    "https://www.perplexity.ai/*"
   ],
   "omnibox": {
     "keyword": "@"
