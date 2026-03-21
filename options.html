@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Call Your AI — Settings</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 560px;
+      margin: 32px auto;
+      padding: 0 16px 48px;
+      color: #333;
+    }
+
+    h1 {
+      color: #3B82F6;
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    h2 {
+      font-size: 15px;
+      margin: 28px 0 10px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 6px;
+    }
+
+    p.subtitle {
+      color: #666;
+      font-size: 13px;
+      margin: 0 0 24px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 14px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    /* ── Enabled services ── */
+    .service-toggle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .service-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .service-toggle.dragging {
+      opacity: 0.5;
+    }
+
+    .drag-handle {
+      color: #aaa;
+      font-size: 18px;
+      cursor: grab;
+    }
+
+    .service-toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .service-toggle .emoji { font-size: 18px; }
+    .service-toggle .name  { flex: 1; font-size: 14px; }
+
+    /* ── Custom services ── */
+    .custom-service-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr 2fr auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .custom-service-form input {
+      padding: 8px 10px;
+      font-size: 13px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+
+    .custom-service-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .custom-service-entry {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .custom-service-entry .name { flex: 1; font-weight: 600; }
+    .custom-service-entry .url  { flex: 2; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #3B82F6;
+      color: white;
+    }
+
+    .btn-primary:hover { background: #2563EB; }
+
+    .btn-danger {
+      background: #FEE2E2;
+      color: #B91C1C;
+    }
+
+    .btn-danger:hover { background: #FECACA; }
+
+    .btn-save {
+      margin-top: 24px;
+      padding: 10px 28px;
+      font-size: 15px;
+    }
+
+    .saved-msg {
+      display: none;
+      color: #16A34A;
+      font-size: 13px;
+      margin-left: 12px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚙️ Call Your AI — Settings</h1>
+  <p class="subtitle">Customize which AI services appear, their order, and add your own.</p>
+
+  <!-- Default service -->
+  <h2>Default service</h2>
+  <label for="defaultService">Service selected when the popup opens:</label>
+  <select id="defaultService"></select>
+
+  <!-- Built-in services -->
+  <h2>Services (drag to reorder)</h2>
+  <p class="hint">Uncheck to hide a service from the popup.</p>
+  <div id="serviceToggleList" class="service-toggle-list"></div>
+
+  <!-- Custom services -->
+  <h2>Custom AI services</h2>
+  <p class="hint">Add any AI service. Use <code>%s</code> in the URL as the query placeholder.</p>
+
+  <div class="custom-service-form">
+    <input id="customName"  type="text" placeholder="Name (e.g. Grok)">
+    <input id="customEmoji" type="text" placeholder="Emoji (e.g. 🦤)" maxlength="2">
+    <input id="customUrl"   type="text" placeholder="URL with %s (e.g. https://x.ai/?q=%s)">
+    <button class="btn-primary" id="addCustom">Add</button>
+  </div>
+
+  <div id="customServiceList" class="custom-service-list"></div>
+
+  <div>
+    <button class="btn-primary btn-save" id="saveBtn">Save settings</button>
+    <span class="saved-msg" id="savedMsg">✔ Saved!</span>
+  </div>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>

@@ -1,165 +1,202 @@
 import { AI_SERVICES } from './services.js';
 
-// Add listener for webNavigation events to intercept address bar navigation
-chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-  // Only process main frame navigations
-  if (details.frameId === 0) {
-    try {
-      const url = new URL(details.url);
+// ─── Context Menu Setup ────────────────────────────────────────────────────
 
-      // Check if this is a direct navigation to an @ command
-      if (url.pathname === '/@' || url.pathname.startsWith('/@')) {
-        const query = url.pathname.substring(2);
-        if (query) {
+chrome.runtime.onInstalled.addListener(() => {
+  // Parent menu item
+  chrome.contextMenus.create({
+    id: 'ask-ai',
+    title: 'Ask AI about "%s"',
+    contexts: ['selection']
+  });
+
+  // One sub-item per service (skip legacy 'bard' alias)
+  for (const [key, svc] of Object.entries(AI_SERVICES)) {
+    if (key === 'bard') continue;
+    chrome.contextMenus.create({
+      id: `ask-ai-${key}`,
+      parentId: 'ask-ai',
+      title: `${svc.icon} ${svc.name}`,
+      contexts: ['selection']
+    });
+  }
+});
+
+chrome.contextMenus.onClicked.addListener((info) => {
+  const prefix = 'ask-ai-';
+  if (!info.menuItemId.startsWith(prefix)) return;
+
+  const serviceKey = info.menuItemId.slice(prefix.length);
+  const service = AI_SERVICES[serviceKey];
+  if (!service || !info.selectionText) return;
+
+  const url = buildUrl(service, info.selectionText.trim());
+  chrome.tabs.create({ url });
+});
+
+// ─── Navigation Interception ───────────────────────────────────────────────
+
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+  if (details.frameId !== 0) return;
+
+  try {
+    const url = new URL(details.url);
+
+    if (url.pathname === '/@' || url.pathname.startsWith('/@')) {
+      const query = url.pathname.substring(2);
+      if (query) {
+        chrome.tabs.update(details.tabId, { url: 'about:blank' });
+        handleAIQuery('@' + query, details.tabId);
+        return;
+      }
+    }
+
+    if (
+      url.hostname.includes('google.com') ||
+      url.hostname.includes('bing.com') ||
+      url.hostname.includes('yahoo.com') ||
+      url.hostname.includes('duckduckgo.com')
+    ) {
+      for (const key of ['q', 'query', 'p', 'text']) {
+        const query = url.searchParams.get(key);
+        if (query && query.startsWith('@')) {
           chrome.tabs.update(details.tabId, { url: 'about:blank' });
-          handleAIQuery('@' + query);
+          handleAIQuery(query, details.tabId);
           return;
         }
       }
-
-      // Check for search engine queries containing @ commands
-      if (url.hostname.includes('google.com') ||
-          url.hostname.includes('bing.com') ||
-          url.hostname.includes('yahoo.com') ||
-          url.hostname.includes('duckduckgo.com')) {
-
-        const searchParams = url.searchParams;
-        const searchKeys = ['q', 'query', 'p', 'text'];
-
-        for (const key of searchKeys) {
-          if (searchParams.has(key)) {
-            const query = searchParams.get(key);
-            if (query && query.startsWith('@')) {
-              chrome.tabs.update(details.tabId, { url: 'about:blank' });
-              handleAIQuery(query);
-              return;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.error('Error processing navigation:', e);
     }
+  } catch (e) {
+    console.error('Error processing navigation:', e);
   }
 });
 
-// Direct address bar handler
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.url) {
-    try {
-      const url = new URL(changeInfo.url);
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (!changeInfo.url) return;
 
-      if (url.href.startsWith('http://@') || url.href.startsWith('https://@')) {
-        const query = changeInfo.url.split('://')[1];
-        if (query.startsWith('@')) {
-          chrome.tabs.update(tabId, { url: 'about:blank' });
-          handleAIQuery(query);
-        }
+  try {
+    const url = new URL(changeInfo.url);
+    if (url.href.startsWith('http://@') || url.href.startsWith('https://@')) {
+      const query = changeInfo.url.split('://')[1];
+      if (query.startsWith('@')) {
+        chrome.tabs.update(tabId, { url: 'about:blank' });
+        handleAIQuery(query, tabId);
       }
-    } catch (e) {
-      console.error('Error in address bar handler:', e);
     }
+  } catch (e) {
+    console.error('Error in address bar handler:', e);
   }
 });
+
+// ─── Query Parsing ─────────────────────────────────────────────────────────
 
 /**
- * Extracts the AI service and query from user input.
- * @param {string} input - User input text (e.g. "@chatgpt what is AI")
- * @returns {Object|null}
+ * Resolve a typed service name to a key in AI_SERVICES.
+ * Supports exact match first, then prefix match (single unambiguous result).
  */
-function extractServiceFromInput(input) {
-  const match = input.match(/^@([a-zA-Z]+)\s+(.+)/);
+function resolveServiceKey(typed) {
+  const lower = typed.toLowerCase();
 
-  if (match) {
-    const serviceName = match[1].toLowerCase();
-    const query = match[2].trim();
+  if (AI_SERVICES[lower]) return lower;
 
-    if (AI_SERVICES[serviceName]) {
-      return {
-        service: AI_SERVICES[serviceName],
-        serviceKey: serviceName,
-        query
-      };
-    }
-  }
+  const prefixMatches = Object.keys(AI_SERVICES).filter(k => k.startsWith(lower));
+  if (prefixMatches.length === 1) return prefixMatches[0];
 
   return null;
 }
 
 /**
- * Main handler for processing AI queries.
- * @param {string} input - User input from address bar
+ * Parse "@<service> <query>" or "@all <query>" from user input.
  */
-function handleAIQuery(input) {
-  const extractedData = extractServiceFromInput(input);
+function extractServiceFromInput(input) {
+  const match = input.match(/^@([a-zA-Z]+)\s+(.+)/);
+  if (!match) return null;
 
-  if (!extractedData) {
+  const typed = match[1].toLowerCase();
+  const query = match[2].trim();
+
+  // Broadcast mode
+  if (typed === 'all') {
+    return { all: true, query };
+  }
+
+  const serviceKey = resolveServiceKey(typed);
+  if (!serviceKey) return null;
+
+  return { service: AI_SERVICES[serviceKey], serviceKey, query };
+}
+
+// ─── URL Builder ───────────────────────────────────────────────────────────
+
+function buildUrl(service, query) {
+  if (service.directUrl) {
+    return service.directUrl.replace('%s', encodeURIComponent(query));
+  }
+  const sep = service.url.includes('?') ? '&' : '?';
+  return `${service.url}${sep}${service.queryParam}=${encodeURIComponent(query)}`;
+}
+
+// ─── Main Handler ──────────────────────────────────────────────────────────
+
+function handleAIQuery(input) {
+  const extracted = extractServiceFromInput(input);
+  if (!extracted) return;
+
+  const { query } = extracted;
+
+  if (extracted.all) {
+    // Open every service in a new tab
+    for (const [key, svc] of Object.entries(AI_SERVICES)) {
+      if (key === 'bard') continue; // skip alias
+      chrome.tabs.create({ url: buildUrl(svc, query) });
+    }
     return;
   }
 
-  const { service, query } = extractedData;
-
-  let url;
-  if (service.directUrl) {
-    url = service.directUrl.replace('%s', encodeURIComponent(query));
-  } else {
-    url = service.url;
-    if (service.queryParam) {
-      const separator = url.includes('?') ? '&' : '?';
-      url = `${url}${separator}${service.queryParam}=${encodeURIComponent(query)}`;
-    }
-  }
+  const { service } = extracted;
+  const url = buildUrl(service, query);
 
   chrome.tabs.query({}, (tabs) => {
-    const existingTab = tabs.find(tab => tab.url && tab.url.startsWith(service.url));
-
-    if (existingTab) {
-      chrome.tabs.update(existingTab.id, { active: true, url });
+    const existing = tabs.find(t => t.url && t.url.startsWith(service.url));
+    if (existing) {
+      chrome.tabs.update(existing.id, { active: true, url });
     } else {
       chrome.tabs.create({ url });
     }
   });
 }
 
-// Set default suggestion text shown when user types "@" in the address bar
+// ─── Omnibox ───────────────────────────────────────────────────────────────
+
 chrome.omnibox.setDefaultSuggestion({
-  description: 'Type an AI service name: @chatgpt, @gemini, @claude, @perplexity, @copilot'
+  description: 'Type: @chatgpt, @gemini, @claude, @perplexity, @copilot, or @all &lt;query&gt;'
 });
 
-// Fired each time the user updates the text in the omnibox
 chrome.omnibox.onInputChanged.addListener((text, suggest) => {
-  const serviceMatch = text.match(/^([a-zA-Z]+)(?:\s+(.*))?$/);
+  const serviceMatch = text.match(/^([a-zA-Z]*)(?:\s+(.*))?$/);
+  if (!serviceMatch) return;
 
-  if (serviceMatch) {
-    const serviceName = serviceMatch[1].toLowerCase();
-    const serviceObj = AI_SERVICES[serviceName];
+  const typed = serviceMatch[1].toLowerCase();
+  const queryPart = serviceMatch[2] || '';
 
-    if (serviceObj) {
-      const suggestions = [{
-        content: text,
-        description: `${serviceObj.icon} <match>${serviceName}</match>: ${serviceObj.description} ${serviceMatch[2] ? `"${serviceMatch[2]}"` : ''}`
-      }];
+  const allEntry = {
+    content: `all${queryPart ? ' ' + queryPart : ''}`,
+    description: `🌐 <match>all</match>: Ask every AI service${queryPart ? ` "${queryPart}"` : ''}`
+  };
 
-      const otherSuggestions = Object.entries(AI_SERVICES)
-        .filter(([key]) => key !== serviceName)
-        .map(([key, svc]) => ({
-          content: `${key}${serviceMatch[2] ? ' ' + serviceMatch[2] : ''}`,
-          description: `${svc.icon} <match>${key}</match>: ${svc.description} ${serviceMatch[2] ? `"${serviceMatch[2]}"` : ''}`
-        }));
+  const serviceSuggestions = Object.entries(AI_SERVICES)
+    .filter(([key]) => key !== 'bard')
+    .map(([key, svc]) => ({
+      content: `${key}${queryPart ? ' ' + queryPart : ''}`,
+      description: `${svc.icon} <match>${key}</match>: ${svc.description}${queryPart ? ` "${queryPart}"` : ''}`,
+      _matchScore: key === typed ? 2 : key.startsWith(typed) ? 1 : 0
+    }))
+    .sort((a, b) => b._matchScore - a._matchScore)
+    .slice(0, 4);
 
-      suggest([...suggestions, ...otherSuggestions.slice(0, 4)]);
-    } else {
-      const allSuggestions = Object.entries(AI_SERVICES).map(([key, svc]) => ({
-        content: `${key}${serviceMatch[2] ? ' ' + serviceMatch[2] : ''}`,
-        description: `${svc.icon} <match>${key}</match>: ${svc.description} ${serviceMatch[2] ? `"${serviceMatch[2]}"` : ''}`
-      }));
-
-      suggest(allSuggestions.slice(0, 5));
-    }
-  }
+  suggest([allEntry, ...serviceSuggestions]);
 });
 
-// Fired when the user accepts a suggestion from the omnibox
 chrome.omnibox.onInputEntered.addListener((text) => {
   handleAIQuery('@' + text);
 });
